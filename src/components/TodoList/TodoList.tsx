@@ -34,85 +34,89 @@ export const TodoList: React.FC<TodoListProps> = ({
 }) => {
   return (
     <section className="todoapp__main" data-cy="TodoList">
-      {filteredTodos.map(todo => (
-        <div
-          data-cy="Todo"
-          className={classNames('todo', {
-            completed: todo.completed,
-          })}
-          key={todo.id}
-        >
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label className="todo__status-label">
-            <input
-              data-cy="TodoStatus"
-              type="checkbox"
-              className="todo__status"
-              checked={todo.completed}
-              onChange={() => {
-                handleUpdateTodo(
-                  todo.completed === false
-                    ? { ...todo, completed: true }
-                    : { ...todo, completed: false },
-                );
-              }}
-            />
-          </label>
+      {filteredTodos.map(todo => {
+        const { id, title, completed } = todo;
 
-          {editingTodoId === todo.id ? (
-            <form>
+        return (
+          <div
+            data-cy="Todo"
+            className={classNames('todo', {
+              completed: completed,
+            })}
+            key={id}
+          >
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+            <label className="todo__status-label">
               <input
-                data-cy="TodoTitleField"
-                type="text"
-                className="todo__title-field"
-                placeholder="Empty todo will be deleted"
-                value={updatedTitle}
-                onChange={event => setUpdatedTitle(event.target.value)}
-                onBlur={() => {
-                  changeTitleTodo(todo);
+                data-cy="TodoStatus"
+                type="checkbox"
+                className="todo__status"
+                checked={completed}
+                onChange={() => {
+                  handleUpdateTodo(
+                    completed === false
+                      ? { ...todo, completed: true }
+                      : { ...todo, completed: false },
+                  );
                 }}
-                onKeyDown={event => {
-                  if (event.key === 'Enter') {
-                    changeTitleTodo(todo);
-                  }
-
-                  if (event.key === 'Escape') {
-                    setEditingTodoId(null);
-                  }
-                }}
-                ref={editTodoRef}
               />
-            </form>
-          ) : (
-            <>
-              <span
-                data-cy="TodoTitle"
-                className="todo__title"
-                onDoubleClick={() => {
-                  startEditTodo(todo);
-                }}
-              >
-                {todo.title}
-              </span>
-              <button
-                type="button"
-                className="todo__remove"
-                data-cy="TodoDelete"
-                onClick={() => {
-                  handleDeleteTodo(todo.id);
-                }}
-              >
-                ×
-              </button>
-            </>
-          )}
+            </label>
 
-          <div data-cy="TodoLoader" className={checkModalActive(todo)}>
-            <div className="modal-background has-background-white-ter" />
-            <div className="loader" />
+            {editingTodoId === id ? (
+              <form>
+                <input
+                  data-cy="TodoTitleField"
+                  type="text"
+                  className="todo__title-field"
+                  placeholder="Empty todo will be deleted"
+                  value={updatedTitle}
+                  onChange={event => setUpdatedTitle(event.target.value)}
+                  onBlur={() => {
+                    changeTitleTodo(todo);
+                  }}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter') {
+                      changeTitleTodo(todo);
+                    }
+
+                    if (event.key === 'Escape') {
+                      setEditingTodoId(null);
+                    }
+                  }}
+                  ref={editTodoRef}
+                />
+              </form>
+            ) : (
+              <>
+                <span
+                  data-cy="TodoTitle"
+                  className="todo__title"
+                  onDoubleClick={() => {
+                    startEditTodo(todo);
+                  }}
+                >
+                  {title}
+                </span>
+                <button
+                  type="button"
+                  className="todo__remove"
+                  data-cy="TodoDelete"
+                  onClick={() => {
+                    handleDeleteTodo(id);
+                  }}
+                >
+                  ×
+                </button>
+              </>
+            )}
+
+            <div data-cy="TodoLoader" className={checkModalActive(todo)}>
+              <div className="modal-background has-background-white-ter" />
+              <div className="loader" />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {tempTodo && (
         <div

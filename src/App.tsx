@@ -8,11 +8,12 @@ import { Header } from './components/Header/Header';
 import { TodoList } from './components/TodoList/TodoList';
 import { Footer } from './components/Footer/Footer';
 import { ErrorNotification } from './components/Error/ErrorNotification';
+import * as todoHelpers from './utils/todoUtils';
 
 export enum Status {
-  All = 'all',
-  Active = 'active',
-  Completed = 'completed',
+  All = 'All',
+  Active = 'Active',
+  Completed = 'Completed',
 }
 
 export const App: React.FC<Status> = () => {
@@ -53,6 +54,18 @@ export const App: React.FC<Status> = () => {
 
     return todo;
   });
+
+  const todoHelpersParams = {
+    todos,
+    setErrorMessage,
+    setIsSubmitting,
+    setTempTodo,
+    setLoadingTodoId,
+    setTodos,
+    closeError,
+    timerId,
+    inputRef,
+  };
 
   //#region useEffects
 
@@ -103,33 +116,20 @@ export const App: React.FC<Status> = () => {
 
   //#region functions
 
-  const addTodo = ({
-    title,
-    userId,
-    completed,
-  }: Omit<Todo, 'id'>): Promise<void> => {
-    setErrorMessage('');
-    setIsSubmitting(true);
-    setTempTodo({ id: 0, title, userId, completed });
-    setLoadingTodoId(0);
+  const handleDeleteTodo = (todoId: number) => {
+    todoHelpers.deleteTodo(todoId, todoHelpersParams);
+  };
 
-    return todoService
-      .createTodo({ title, userId, completed })
-      .then(newTodo => {
-        setTodos(currentTodos => [...currentTodos, newTodo]);
-        setLoadingTodoId(null);
-        setTempTodo(null);
-        setErrorMessage('');
-      })
-      .catch(error => {
-        setTempTodo(null);
-        setLoadingTodoId(null);
-        setErrorMessage('Unable to add a todo');
-        window.clearTimeout(timerId.current);
-        closeError();
-        throw error;
-      })
-      .finally(() => setIsSubmitting(false));
+  const handleUpdateTodo = (todo: Todo) => {
+    todoHelpers.updateTodo(todo, todoHelpersParams);
+  };
+
+  const handleCompleteAllTodo = () => {
+    todoHelpers.completeAllTodo(todoHelpersParams);
+  };
+
+  const clearCompleted = () => {
+    todoHelpers.clearCompleted(todoHelpersParams);
   };
 
   const checkModalActive = (todo: Todo): string => {
@@ -153,35 +153,6 @@ export const App: React.FC<Status> = () => {
   const startEditTodo = (todo: Todo) => {
     setEditingTodoId(todo.id);
     setUpdatedTitle(todo.title);
-  };
-
-  const handleDeleteTodo = (todoId: number) => {
-    setErrorMessage('');
-    setLoadingTodoId(todoId);
-    const previousTodos = [...todos];
-
-    todoService
-      .deleteTodo(todoId)
-      .then(() => {
-        setTodos(currentTodos =>
-          currentTodos.filter(todo => todo.id !== todoId),
-        );
-
-        if (inputRef.current !== null) {
-          inputRef.current.focus();
-        }
-
-        setErrorMessage('');
-      })
-      .catch(error => {
-        setTodos(previousTodos);
-        setErrorMessage('Unable to delete a todo');
-        setLoadingTodoId(null);
-        window.clearTimeout(timerId.current);
-        closeError();
-        throw error;
-      })
-      .finally(() => setLoadingTodoId(null));
   };
 
   const changeTitleTodo = (selectedTodo: Todo) => {
@@ -229,99 +200,6 @@ export const App: React.FC<Status> = () => {
     setQuery(newValue);
   };
 
-  const handleUpdateTodo = (selectedTodo: Todo) => {
-    setErrorMessage('');
-    setLoadingTodoId(selectedTodo.id);
-    todoService
-      .updateTodo(selectedTodo)
-      .then(() => {
-        setTodos(() => {
-          const newTodos = todos.map(todo =>
-            todo.id === selectedTodo.id ? selectedTodo : todo,
-          );
-
-          return newTodos;
-        });
-        setErrorMessage('');
-      })
-      .catch(error => {
-        setErrorMessage('Unable to update a todo');
-        window.clearTimeout(timerId.current);
-        closeError();
-        throw error;
-      })
-      .finally(() => setLoadingTodoId(null));
-  };
-
-  const handleCompleteAllTodo = () => {
-    setErrorMessage('');
-    const hasNoCompletedTodos = todos.some(todo => !todo.completed);
-    const newCompletionState = hasNoCompletedTodos ? true : false;
-    const hasTodosId = todos.map(todo => todo.id);
-
-    setLoadingTodoId(hasTodosId);
-
-    Promise.all(
-      todos.map(todo =>
-        todoService.updateTodo({ ...todo, completed: newCompletionState }),
-      ),
-    )
-      .then(todosComplete => {
-        const newTodos = todosComplete.flat();
-
-        setTodos(newTodos);
-        setLoadingTodoId(null);
-        setErrorMessage('');
-      })
-      .catch(error => {
-        setErrorMessage('Unable to update a todo');
-        window.clearTimeout(timerId.current);
-        closeError();
-        throw error;
-      });
-  };
-
-  const clearCompleted = () => {
-    setErrorMessage('');
-    const completedTodos = todos.filter(todo => todo.completed);
-
-    if (completedTodos.length === 0) {
-      return;
-    }
-
-    setLoadingTodoId(completedTodos.map(todo => todo.id));
-
-    Promise.allSettled(
-      completedTodos.map(todo => todoService.deleteTodo(todo.id)),
-    )
-      .then(results => {
-        const failedTodos = completedTodos.filter(
-          (_, index) => results[index].status === 'rejected',
-        );
-
-        setTodos(currentTodos =>
-          currentTodos.filter(
-            todo =>
-              !todo.completed ||
-              failedTodos.some(failed => failed.id === todo.id),
-          ),
-        );
-
-        if (inputRef.current !== null) {
-          inputRef.current.focus();
-        }
-
-        if (failedTodos.length > 0) {
-          setErrorMessage('Unable to delete a todo');
-          window.clearTimeout(timerId.current);
-          closeError();
-        }
-      })
-      .finally(() => {
-        setLoadingTodoId(null);
-      });
-  };
-
   const reset = () => {
     setQuery('');
   };
@@ -337,11 +215,12 @@ export const App: React.FC<Status> = () => {
       return;
     }
 
-    addTodo({
-      title: query.trim(),
-      userId: todoService.USER_ID,
-      completed: false,
-    })
+    todoHelpers
+      .addTodo(todoHelpersParams, {
+        title: query.trim(),
+        userId: todoService.USER_ID,
+        completed: false,
+      })
       .then(reset)
       .catch(error => {
         window.clearTimeout(timerId.current);
